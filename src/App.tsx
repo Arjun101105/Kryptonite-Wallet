@@ -27,11 +27,16 @@ function App() {
   const [ethWallets, setEthWallets] = useState<EthWallet[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isSeedVisible, setIsSeedVisible] = useState<boolean>(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [isValidMnemonic, setIsValidMnemonic] = useState<boolean>(true);
   const [expandedWallet, setExpandedWallet] = useState<string | null>(null);
   const [importMnemonic, setImportMnemonic] = useState<string>("");
   const [showImport, setShowImport] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{
+    type: "solana" | "ethereum" | null;
+    index: number;
+    visible: boolean;
+  }>({ type: null, index: -1, visible: false });
 
   const toggleTheme = (): void => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -137,12 +142,21 @@ function App() {
     });
   };
 
-  const deleteWallet = (type: "solana" | "ethereum", index: number): void => {
-    if (type === "solana") {
-      setSolanaWallets(solanaWallets.filter((_, i) => i !== index));
-    } else {
-      setEthWallets(ethWallets.filter((_, i) => i !== index));
+  const confirmDeleteWallet = (type: "solana" | "ethereum", index: number): void => {
+    setShowDeleteConfirm({ type, index, visible: true });
+  };
+
+  const deleteWallet = (): void => {
+    if (showDeleteConfirm.type === "solana") {
+      setSolanaWallets(solanaWallets.filter((_, i) => i !== showDeleteConfirm.index));
+    } else if (showDeleteConfirm.type === "ethereum") {
+      setEthWallets(ethWallets.filter((_, i) => i !== showDeleteConfirm.index));
     }
+    setShowDeleteConfirm({ type: null, index: -1, visible: false });
+  };
+
+  const cancelDelete = (): void => {
+    setShowDeleteConfirm({ type: null, index: -1, visible: false });
   };
 
   const toggleWalletExpansion = (index: string): void => {
@@ -153,11 +167,11 @@ function App() {
     <div
       className={`min-h-screen transition-all duration-300 ${
         theme === "dark"
-          ? "bg-gradient-to-br from-gray-900 to-blue-950 text-gray-100"
-          : "bg-gray-50 text-gray-900"
+          ? "bg-[#1A1F2A] text-[#E6E8EB]" // Deep navy background with soft white text
+          : "bg-[#EAEBED] text-[#333333]"
       } font-sans`}
     >
-      <div className="container mx-auto p-6 md:p-12">
+      <div className="container mx-auto p-4 md:p-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -165,13 +179,21 @@ function App() {
           transition={{ duration: 0.5 }}
           className="flex justify-between items-center mb-8"
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-500">
+          <h1
+            className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#6B7280] to-[#1A1F2A] bg-clip-text"
+            style={{
+              WebkitTextFillColor: theme === "dark" ? "#6B7280" : "#2E424D",
+              color: theme === "dark" ? "#6B7280" : "#2E424D",
+            }}
+          >
             Kryptonite Wallet
           </h1>
           <button
             onClick={toggleTheme}
-            className={`p-2 rounded-full ${
-              theme === "dark" ? "bg-gray-800 hover:bg-gray-700 text-gray-100" : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+            className={`p-2 rounded-full border-2 shadow-lg ${
+              theme === "dark"
+                ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
             }`}
             title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
@@ -187,31 +209,39 @@ function App() {
           className="mb-8"
         >
           <h2 className="text-2xl md:text-3xl font-semibold mb-2">Choose Your Blockchain</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
+          <p className={` ${theme === "dark" ? "text-[#6B7280]" : "text-[#2E424D]"} mb-4`}>
             Kryptonite supports multiple blockchains for secure wallet management.
           </p>
           <div className="flex gap-4">
             <button
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 border-2 shadow-lg ${
                 blockchain === "solana"
-                  ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
+                  ? theme === "dark"
+                    ? "bg-[#E6E8EB] text-[#1A1F2A] border-[#A1A5B0]"
+                    : "bg-[#5B8291] text-[#FFFFFF] border-[#C0C0C0]"
                   : theme === "dark"
-                  ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                  : "bg-gray-200 hover:bg-gray-300 text-gray-800"
+                  ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                  : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
               }`}
               onClick={() => setBlockchain("solana")}
+              disabled={blockchain === "ethereum"}
+              title={blockchain === "ethereum" ? "Ethereum already selected" : ""}
             >
               Solana
             </button>
             <button
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 border-2 shadow-lg ${
                 blockchain === "ethereum"
-                  ? "bg-gradient-to-r from-blue-600 to-blue-800 text-white"
+                  ? theme === "dark"
+                    ? "bg-[#E6E8EB] text-[#1A1F2A] border-[#A1A5B0]"
+                    : "bg-[#5B8291] text-[#FFFFFF] border-[#C0C0C0]"
                   : theme === "dark"
-                  ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                  : "bg-gray-200 hover:bg-gray-300 text-gray-800"
+                  ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                  : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
               }`}
               onClick={() => setBlockchain("ethereum")}
+              disabled={blockchain === "solana"}
+              title={blockchain === "solana" ? "Solana already selected" : ""}
             >
               Ethereum
             </button>
@@ -226,8 +256,10 @@ function App() {
           >
             {/* Seed Phrase Section */}
             <div
-              className={`p-6 rounded-lg mb-8 ${
-                theme === "dark" ? "bg-gray-800 bg-opacity-50" : "bg-white shadow-md"
+              className={`p-6 rounded-lg mb-8 border-4 shadow-lg ${
+                theme === "dark"
+                  ? "bg-[#2C323F] text-[#E6E8EB] border-[#A1A5B0]"
+                  : "text-[#5B8291] border-[#C0C0C0]"
               }`}
             >
               <p className="text-lg mb-4">
@@ -235,18 +267,24 @@ function App() {
               </p>
               <div className="flex gap-4">
                 <button
+                  className={`px-6 py-3 border-2 shadow-md ${
+                    theme === "dark"
+                      ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                      : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                  } rounded-lg transition-all duration-300`}
                   onClick={handleGenerateWallet}
-                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-300"
+                  disabled={mnemonic[0] !== " "}
+                  title={mnemonic[0] !== " " ? "Already generated, use Import instead" : ""}
                 >
                   Generate Seed Phrase
                 </button>
                 <button
-                  onClick={() => setShowImport(true)}
-                  className={`px-6 py-3 rounded-lg transition-all duration-300 ${
+                  className={`px-6 py-3 border-2 shadow-md ${
                     theme === "dark"
-                      ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                      : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                  }`}
+                      ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                      : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                  } rounded-lg transition-all duration-300`}
+                  onClick={() => setShowImport(true)}
                 >
                   Import Seed Phrase
                 </button>
@@ -260,15 +298,15 @@ function App() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className={`fixed inset-0 flex items-center justify-center ${
-                      theme === "dark" ? "bg-black bg-opacity-50" : "bg-gray-900 bg-opacity-30"
+                      theme === "dark" ? "bg-[#1A1F2A] bg-opacity-50" : "bg-[#EAEBED] bg-opacity-30"
                     }`}
                   >
                     <motion.div
                       initial={{ scale: 0.8 }}
                       animate={{ scale: 1 }}
                       exit={{ scale: 0.8 }}
-                      className={`p-6 rounded-lg w-full max-w-md ${
-                        theme === "dark" ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900"
+                      className={`p-6 rounded-lg w-full max-w-md border-4 shadow-lg ${
+                        theme === "dark" ? "bg-[#2C323F] text-[#E6E8EB] border-[#A1A5B0]" : "bg-[#5B8291] text-[#FFFFFF] border-[#C0C0C0]"
                       }`}
                     >
                       <h3 className="text-xl font-semibold mb-4">Import Seed Phrase</h3>
@@ -277,24 +315,30 @@ function App() {
                         onChange={(e) => setImportMnemonic(e.target.value)}
                         placeholder="Enter 12-word seed phrase"
                         className={`w-full p-2 rounded-md ${
-                          theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-100 text-gray-900"
-                        }`}
+                          theme === "dark"
+                            ? "bg-[#2C323F] bg-opacity-50 text-[#E6E8EB] border-[#6B7280]"
+                            : "bg-[#5B8291] bg-opacity-50 text-[#FFFFFF] border-[#2E424D]"
+                        } border-2`}
                         rows={4}
                       />
                       <div className="flex gap-4 mt-4">
                         <button
+                          className={`px-4 py-2 border-2 shadow-md ${
+                            theme === "dark"
+                              ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                              : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                          } rounded-lg`}
                           onClick={handleImportMnemonic}
-                          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600"
                         >
                           Import
                         </button>
                         <button
-                          onClick={() => setShowImport(false)}
-                          className={`px-4 py-2 rounded-lg ${
+                          className={`px-4 py-2 border-2 shadow-md ${
                             theme === "dark"
-                              ? "bg-gray-800 text-gray-200"
-                              : "bg-gray-200 text-gray-800"
-                          }`}
+                              ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                              : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                          } rounded-lg`}
+                          onClick={() => setShowImport(false)}
                         >
                           Cancel
                         </button>
@@ -308,22 +352,22 @@ function App() {
                 <div className="mt-6">
                   <div className="flex gap-4 mb-4">
                     <button
-                      onClick={toggleSeedVisibility}
-                      className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+                      className={`px-4 py-2 border-2 shadow-md ${
                         theme === "dark"
-                          ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                          : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                      }`}
+                          ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                          : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                      } rounded-lg transition-all duration-300 ${isSeedVisible ? "bg-opacity-75 border-4" : ""}`}
+                      onClick={toggleSeedVisibility}
                     >
                       {isSeedVisible ? "Hide Seed Phrase" : "Show Seed Phrase"}
                     </button>
                     <button
-                      onClick={copySeedToClipboard}
-                      className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+                      className={`px-4 py-2 border-2 shadow-md ${
                         theme === "dark"
-                          ? "bg-gray-800 hover:bg-gray-700 text-gray-200"
-                          : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                      }`}
+                          ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                          : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                      } rounded-lg transition-all duration-300`}
+                      onClick={copySeedToClipboard}
                     >
                       Copy Seed Phrase
                     </button>
@@ -338,8 +382,10 @@ function App() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
                           className={`text-center px-4 py-2 rounded-md text-sm md:text-base ${
-                            theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-100 text-gray-900"
-                          }`}
+                            theme === "dark"
+                              ? "bg-[#2C323F] bg-opacity-50 text-[#E6E8EB] border-[#6B7280]"
+                              : "bg-[#5B8291] bg-opacity-50 text-[#FFFFFF] border-[#2E424D]"
+                          } border-2`}
                         >
                           {index + 1}. {word}
                         </motion.span>
@@ -347,7 +393,7 @@ function App() {
                     </div>
                   )}
                   {!isValidMnemonic && <p className="text-red-500">Invalid seed phrase detected.</p>}
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  <p className={`text-gray-600 ${theme === "dark" ? "text-[#6B7280]" : "text-[#2E424D]"} text-sm`}>
                     Save these words securely. Do not share them with anyone.
                   </p>
                 </div>
@@ -358,14 +404,22 @@ function App() {
             {mnemonic[0] !== " " && (
               <div className="flex gap-4 mb-8">
                 <button
+                  className={`px-6 py-3 border-2 shadow-md ${
+                    theme === "dark"
+                      ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                      : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                  } rounded-lg transition-all duration-300`}
                   onClick={handleAddSolanaWallet}
-                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-300"
                 >
                   Add Solana Wallet
                 </button>
                 <button
+                  className={`px-6 py-3 border-2 shadow-md ${
+                    theme === "dark"
+                      ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                      : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                  } rounded-lg transition-all duration-300`}
                   onClick={handleAddEthWallet}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all duration-300"
                 >
                   Add Ethereum Wallet
                 </button>
@@ -384,8 +438,10 @@ function App() {
                           key={index}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`p-4 rounded-lg cursor-pointer hover:shadow-lg transition-all duration-300 ${
-                            theme === "dark" ? "bg-gray-800" : "bg-white"
+                          className={`p-4 rounded-lg cursor-pointer hover:shadow-lg transition-all duration-300 border-4 ${
+                            theme === "dark"
+                              ? "bg-[#2C323F] text-[#E6E8EB] border-[#A1A5B0]"
+                              : "text-[#5B8291] border-[#C0C0C0]"
                           }`}
                           onClick={() => toggleWalletExpansion(`solana-${index}`)}
                         >
@@ -397,16 +453,24 @@ function App() {
                                   e.stopPropagation();
                                   copyAddress(wallet.publicKey);
                                 }}
-                                className="text-orange-400 hover:text-orange-300"
+                                className={`px-2 py-1 border-2 ${
+                                  theme === "dark"
+                                    ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                                    : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                                } rounded`}
                               >
                                 Copy
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  deleteWallet("solana", index);
+                                  confirmDeleteWallet("solana", index);
                                 }}
-                                className="text-red-500 hover:text-red-400"
+                                className={`px-2 py-1 border-2 ${
+                                  theme === "dark"
+                                    ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                                    : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                                } rounded`}
                               >
                                 Delete
                               </button>
@@ -427,8 +491,8 @@ function App() {
                                 <QRCode
                                   value={wallet.publicKey}
                                   size={128}
-                                  bgColor={theme === "dark" ? "#1F2937" : "#FFFFFF"}
-                                  fgColor={theme === "dark" ? "#FFFFFF" : "#000000"}
+                                  bgColor={theme === "dark" ? "#1A1F2A" : "#EAEBED"}
+                                  fgColor={theme === "dark" ? "#6B7280" : "#2E424D"}
                                 />
                               </div>
                             </div>
@@ -448,8 +512,10 @@ function App() {
                           key={index}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`p-4 rounded-lg cursor-pointer hover:shadow-lg transition-all duration-300 ${
-                            theme === "dark" ? "bg-gray-800" : "bg-white"
+                          className={`p-4 rounded-lg cursor-pointer hover:shadow-lg transition-all duration-300 border-4 ${
+                            theme === "dark"
+                              ? "bg-[#2C323F] text-[#E6E8EB] border-[#A1A5B0]"
+                              : "text-[#5B8291] border-[#C0C0C0]"
                           }`}
                           onClick={() => toggleWalletExpansion(`eth-${index}`)}
                         >
@@ -461,16 +527,24 @@ function App() {
                                   e.stopPropagation();
                                   copyAddress(wallet.address);
                                 }}
-                                className="text-orange-400 hover:text-orange-300"
+                                className={`px-2 py-1 border-2 ${
+                                  theme === "dark"
+                                    ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                                    : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                                } rounded`}
                               >
                                 Copy
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  deleteWallet("ethereum", index);
+                                  confirmDeleteWallet("ethereum", index);
                                 }}
-                                className="text-red-500 hover:text-red-400"
+                                className={`px-2 py-1 border-2 ${
+                                  theme === "dark"
+                                    ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                                    : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                                } rounded`}
                               >
                                 Delete
                               </button>
@@ -491,8 +565,8 @@ function App() {
                                 <QRCode
                                   value={wallet.address}
                                   size={128}
-                                  bgColor={theme === "dark" ? "#1F2937" : "#FFFFFF"}
-                                  fgColor={theme === "dark" ? "#FFFFFF" : "#000000"}
+                                  bgColor={theme === "dark" ? "#1A1F2A" : "#EAEBED"}
+                                  fgColor={theme === "dark" ? "#6B7280" : "#2E424D"}
                                 />
                               </div>
                             </div>
@@ -506,6 +580,54 @@ function App() {
             )}
           </motion.div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {showDeleteConfirm.visible && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className={`fixed inset-0 flex items-center justify-center ${
+                theme === "dark" ? "bg-[#1A1F2A] bg-opacity-50" : "bg-[#EAEBED] bg-opacity-30"
+              }`}
+            >
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.8 }}
+                className={`p-6 rounded-lg w-full max-w-md border-4 shadow-lg ${
+                  theme === "dark" ? "bg-[#2C323F] text-[#E6E8EB] border-[#A1A5B0]" : "bg-[#5B8291] text-[#FFFFFF] border-[#C0C0C0]"
+                }`}
+              >
+                <h3 className="text-xl font-semibold mb-4">Confirm Delete</h3>
+                <p>Are you sure you want to delete this wallet? This action cannot be undone.</p>
+                <div className="flex gap-4 mt-4">
+                  <button
+                    className={`px-4 py-2 border-2 shadow-md ${
+                      theme === "dark"
+                        ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                        : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                    } rounded-lg`}
+                    onClick={deleteWallet}
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    className={`px-4 py-2 border-2 shadow-md ${
+                      theme === "dark"
+                        ? "bg-[#6B7280] hover:bg-[#5A606E] text-[#E6E8EB] border-[#A1A5B0]"
+                        : "bg-[#2E424D] hover:bg-[#3D5766] text-[#FFFFFF] border-[#C0C0C0]"
+                    } rounded-lg`}
+                    onClick={cancelDelete}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
