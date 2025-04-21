@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@font-face {
+    font-family: 'Special Gothic Expanded One';
+    src: url('/public/newFont.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+  
+  .font-gothic {
+    font-family: 'Special Gothic Expanded One', cursive;
+  }
